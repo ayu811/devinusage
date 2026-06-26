@@ -9,7 +9,7 @@ struct DevinBarApp: App {
         MenuBarExtra {
             ContentView(store: store)
         } label: {
-            Image(nsImage: devinMenuBarIcon(size: 18))
+            Image(nsImage: devinMenuBarIcon())
                 .resizable()
                 .aspectRatio(contentMode: .fit)
         }

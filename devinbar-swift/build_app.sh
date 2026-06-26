@@ -21,6 +21,8 @@ mkdir -p "$APP_DIR/Contents/Resources"
 
 cp "$BUILD_DIR/release/DevinBar" "$APP_DIR/Contents/MacOS/DevinBar"
 cp "$BUILD_DIR/devinusage" "$APP_DIR/Contents/MacOS/devinusage"
+cp "$SCRIPT_DIR/Resources/Devin.icns" "$APP_DIR/Contents/Resources/Devin.icns"
+cp "$SCRIPT_DIR/Resources/Devin.png" "$APP_DIR/Contents/Resources/Devin.png"
 cp "$SCRIPT_DIR/Resources/DevinBarApp.icns" "$APP_DIR/Contents/Resources/DevinBarApp.icns"
 cp "$SCRIPT_DIR/Resources/DevinMenuBar.png" "$APP_DIR/Contents/Resources/DevinMenuBar.png"
 

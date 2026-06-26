@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/ayu/devinusage/internal/devinusage"
 )
 
 const usage = `devinusage — analyze Devin CLI token usage and costs from local data.
@@ -82,12 +84,12 @@ func runReport(name, mode string, args []string) {
 		os.Exit(1)
 	}
 
-	since, err := parseDate(f.Since)
+	since, err := devinusage.ParseDate(f.Since)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: invalid --since: %v\n", err)
 		os.Exit(1)
 	}
-	until, err := parseDate(f.Until)
+	until, err := devinusage.ParseDate(f.Until)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: invalid --until: %v\n", err)
 		os.Exit(1)
@@ -96,27 +98,27 @@ func runReport(name, mode string, args []string) {
 		until = until.Add(24*time.Hour - time.Second)
 	}
 
-	records, err := readUsageRecords(f.DBPath, since, until)
+	records, err := devinusage.ReadUsageRecords(f.DBPath, since, until)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
 
-	prices, err := loadPricing(f.PricingPath)
+	prices, err := devinusage.LoadPricing(f.PricingPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
 
 	if f.JSON {
-		if err := renderJSON(os.Stdout, records, prices, mode); err != nil {
+		if err := devinusage.RenderJSON(os.Stdout, records, prices, mode); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}
 		return
 	}
 
-	aggregates := aggregateBy(records, prices, mode)
+	aggregates := devinusage.AggregateBy(records, prices, mode)
 	var title string
 	switch mode {
 	case "daily":
@@ -126,7 +128,7 @@ func runReport(name, mode string, args []string) {
 	case "session":
 		title = "Devin CLI Session Usage Report"
 	}
-	renderTable(os.Stdout, title, aggregates, !f.NoCache, f.Breakdown, records, prices, mode, f.Width)
+	devinusage.RenderTable(os.Stdout, title, aggregates, !f.NoCache, f.Breakdown, records, prices, mode, f.Width)
 
 	unknown := collectUnknownModels(records, prices)
 	if len(unknown) > 0 {
@@ -151,7 +153,7 @@ func runPricing(args []string) {
 	// Manual subcommand parsing because flag.Parse stops at the first
 	// positional argument, which breaks `pricing init <path>`.
 	if len(args) == 0 || (len(args) == 1 && args[0] == "show") {
-		fmt.Fprint(os.Stdout, dumpDefaultPricing())
+		fmt.Fprint(os.Stdout, devinusage.DumpDefaultPricing())
 		return
 	}
 
@@ -167,7 +169,7 @@ func runPricing(args []string) {
 				os.Exit(1)
 			}
 		}
-		if err := os.WriteFile(path, []byte(dumpDefaultPricing()), 0o644); err != nil {
+		if err := os.WriteFile(path, []byte(devinusage.DumpDefaultPricing()), 0o644); err != nil {
 			fmt.Fprintf(os.Stderr, "error: write pricing file: %v\n", err)
 			os.Exit(1)
 		}
@@ -179,11 +181,11 @@ func runPricing(args []string) {
 	os.Exit(1)
 }
 
-func collectUnknownModels(records []UsageRecord, prices map[string]ModelPrice) []string {
+func collectUnknownModels(records []devinusage.UsageRecord, prices map[string]devinusage.ModelPrice) []string {
 	seen := make(map[string]bool)
 	var unknown []string
 	for _, r := range records {
-		if !isKnownModel(prices, r.Model) && !seen[r.Model] {
+		if !devinusage.IsKnownModel(prices, r.Model) && !seen[r.Model] {
 			seen[r.Model] = true
 			unknown = append(unknown, r.Model)
 		}

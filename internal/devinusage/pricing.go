@@ -1,4 +1,4 @@
-package main
+package devinusage
 
 import (
 	"encoding/json"
@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-const defaultPricingFile = "pricing.json"
+const DefaultPricingFile = "pricing.json"
 
 // ModelPrice stores cost per 1 million tokens (USD).
 type ModelPrice struct {
@@ -78,7 +78,7 @@ func priceForModel(prices map[string]ModelPrice, model string) ModelPrice {
 	return ModelPrice{}
 }
 
-func estimateCost(prices map[string]ModelPrice, model string, input, output, cacheRead, cacheCreation int64) float64 {
+func EstimateCost(prices map[string]ModelPrice, model string, input, output, cacheRead, cacheCreation int64) float64 {
 	p := priceForModel(prices, model)
 	return float64(input)/1e6*p.Input +
 		float64(output)/1e6*p.Output +
@@ -86,16 +86,16 @@ func estimateCost(prices map[string]ModelPrice, model string, input, output, cac
 		float64(cacheCreation)/1e6*p.CacheCreation
 }
 
-func isKnownModel(prices map[string]ModelPrice, model string) bool {
+func IsKnownModel(prices map[string]ModelPrice, model string) bool {
 	return priceForModel(prices, model) != (ModelPrice{})
 }
 
-func loadPricing(path string) (map[string]ModelPrice, error) {
+func LoadPricing(path string) (map[string]ModelPrice, error) {
 	if path == "" {
 		// Auto-load a local pricing.json if it exists, otherwise fall back to
 		// built-in estimates. This keeps the tool self-contained in one directory.
-		if _, err := os.Stat(defaultPricingFile); err == nil {
-			path = defaultPricingFile
+		if _, err := os.Stat(DefaultPricingFile); err == nil {
+			path = DefaultPricingFile
 		} else {
 			return copyPricing(defaultPricing), nil
 		}
@@ -140,7 +140,7 @@ func copyPricing(src map[string]ModelPrice) map[string]ModelPrice {
 	return out
 }
 
-func dumpDefaultPricing() string {
+func DumpDefaultPricing() string {
 	type entry struct {
 		Input         float64 `json:"input"`
 		Output        float64 `json:"output"`

@@ -1,4 +1,4 @@
-package main
+package devinusage
 
 import (
 	"encoding/json"
@@ -23,7 +23,7 @@ type UsageRecord struct {
 	CacheCreationTokens int64
 }
 
-func defaultDBPath() string {
+func DefaultDBPath() string {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return ""
@@ -31,9 +31,9 @@ func defaultDBPath() string {
 	return filepath.Join(home, ".local", "share", "devin", "cli", "sessions.db")
 }
 
-func readUsageRecords(dbPath string, since, until time.Time) ([]UsageRecord, error) {
+func ReadUsageRecords(dbPath string, since, until time.Time) ([]UsageRecord, error) {
 	if dbPath == "" {
-		dbPath = defaultDBPath()
+		dbPath = DefaultDBPath()
 	}
 
 	if _, err := os.Stat(dbPath); err != nil {

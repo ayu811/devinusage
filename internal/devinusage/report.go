@@ -1,4 +1,4 @@
-package main
+package devinusage
 
 import (
 	"encoding/json"
@@ -55,10 +55,10 @@ func (a *Aggregate) modelList() []string {
 	return models
 }
 
-func aggregateBy(records []UsageRecord, prices map[string]ModelPrice, mode string) []*Aggregate {
+func AggregateBy(records []UsageRecord, prices map[string]ModelPrice, mode string) []*Aggregate {
 	buckets := make(map[AggregateKey]*Aggregate)
 	for _, r := range records {
-		cost := estimateCost(prices, r.Model, r.InputTokens, r.OutputTokens, r.CacheReadTokens, r.CacheCreationTokens)
+		cost := EstimateCost(prices, r.Model, r.InputTokens, r.OutputTokens, r.CacheReadTokens, r.CacheCreationTokens)
 		var key AggregateKey
 		var label string
 		switch mode {
@@ -70,7 +70,7 @@ func aggregateBy(records []UsageRecord, prices map[string]ModelPrice, mode strin
 			label = string(key)
 		case "session":
 			key = AggregateKey(r.SessionID)
-			label = sessionLabel(r)
+			label = SessionLabel(r)
 		default:
 			key = AggregateKey(r.Timestamp.Format("2006-01-02"))
 			label = string(key)
@@ -93,7 +93,7 @@ func aggregateBy(records []UsageRecord, prices map[string]ModelPrice, mode strin
 	return result
 }
 
-func sessionLabel(r UsageRecord) string {
+func SessionLabel(r UsageRecord) string {
 	if r.SessionTitle != "" {
 		return fmt.Sprintf("%s (%s)", r.SessionID, r.SessionTitle)
 	}
@@ -110,11 +110,11 @@ type ModelBreakdown struct {
 	Cost        float64
 }
 
-func breakdownByModel(records []UsageRecord, prices map[string]ModelPrice, keyFn func(UsageRecord) AggregateKey) map[AggregateKey][]ModelBreakdown {
+func BreakdownByModel(records []UsageRecord, prices map[string]ModelPrice, keyFn func(UsageRecord) AggregateKey) map[AggregateKey][]ModelBreakdown {
 	groups := make(map[AggregateKey]map[string]*ModelBreakdown)
 	for _, r := range records {
 		key := keyFn(r)
-		cost := estimateCost(prices, r.Model, r.InputTokens, r.OutputTokens, r.CacheReadTokens, r.CacheCreationTokens)
+		cost := EstimateCost(prices, r.Model, r.InputTokens, r.OutputTokens, r.CacheReadTokens, r.CacheCreationTokens)
 		if _, ok := groups[key]; !ok {
 			groups[key] = make(map[string]*ModelBreakdown)
 		}
@@ -142,7 +142,7 @@ func breakdownByModel(records []UsageRecord, prices map[string]ModelPrice, keyFn
 	return result
 }
 
-func renderTable(w io.Writer, title string, aggregates []*Aggregate, showCache bool, showBreakdown bool, records []UsageRecord, prices map[string]ModelPrice, mode string, forcedWidth int) {
+func RenderTable(w io.Writer, title string, aggregates []*Aggregate, showCache bool, showBreakdown bool, records []UsageRecord, prices map[string]ModelPrice, mode string, forcedWidth int) {
 	fmt.Fprintf(w, "\n%s\n\n", title)
 
 	if len(aggregates) == 0 {
@@ -151,11 +151,11 @@ func renderTable(w io.Writer, title string, aggregates []*Aggregate, showCache b
 	}
 
 	if showBreakdown {
-		renderBreakdown(w, aggregates, records, prices, mode, forcedWidth)
+		RenderBreakdown(w, aggregates, records, prices, mode, forcedWidth)
 		return
 	}
 
-	width := effectiveWidth(forcedWidth, 0)
+	width := EffectiveWidth(forcedWidth, 0)
 
 	labelFlex := mode == "session"
 	labelMin := 10
@@ -167,9 +167,9 @@ func renderTable(w io.Writer, title string, aggregates []*Aggregate, showCache b
 	var rows [][]string
 	for _, agg := range aggregates {
 		models := strings.Join(agg.modelList(), ", ")
-		row := []string{agg.Label, models, formatTokens(agg.Input), formatTokens(agg.Output)}
+		row := []string{agg.Label, models, FormatTokens(agg.Input), FormatTokens(agg.Output)}
 		if showCache {
-			row = append(row, formatTokens(agg.CacheRead))
+			row = append(row, FormatTokens(agg.CacheRead))
 		}
 		row = append(row, fmt.Sprintf("$%.4f", agg.Cost))
 		rows = append(rows, row)
@@ -183,9 +183,9 @@ func renderTable(w io.Writer, title string, aggregates []*Aggregate, showCache b
 		totalCache += agg.CacheRead
 		totalCost += agg.Cost
 	}
-	footer := []string{"TOTAL", "", formatTokens(totalInput), formatTokens(totalOutput)}
+	footer := []string{"TOTAL", "", FormatTokens(totalInput), FormatTokens(totalOutput)}
 	if showCache {
-		footer = append(footer, formatTokens(totalCache))
+		footer = append(footer, FormatTokens(totalCache))
 	}
 	footer = append(footer, fmt.Sprintf("$%.4f", totalCost))
 
@@ -203,7 +203,7 @@ func renderTable(w io.Writer, title string, aggregates []*Aggregate, showCache b
 	renderBoxTable(w, columns, rows, footer, width, 0)
 }
 
-func renderBreakdown(w io.Writer, aggregates []*Aggregate, records []UsageRecord, prices map[string]ModelPrice, mode string, forcedWidth int) {
+func RenderBreakdown(w io.Writer, aggregates []*Aggregate, records []UsageRecord, prices map[string]ModelPrice, mode string, forcedWidth int) {
 	var keyFn func(UsageRecord) AggregateKey
 	switch mode {
 	case "daily":
@@ -215,10 +215,10 @@ func renderBreakdown(w io.Writer, aggregates []*Aggregate, records []UsageRecord
 	default:
 		keyFn = func(r UsageRecord) AggregateKey { return AggregateKey(r.Timestamp.Format("2006-01-02")) }
 	}
-	breakdowns := breakdownByModel(records, prices, keyFn)
+	breakdowns := BreakdownByModel(records, prices, keyFn)
 
 	const indent = 2
-	width := effectiveWidth(forcedWidth, indent)
+	width := EffectiveWidth(forcedWidth, indent)
 
 	for _, agg := range aggregates {
 		fmt.Fprintf(w, "[%s] total cost $%.4f\n", agg.Label, agg.Cost)
@@ -228,7 +228,7 @@ func renderBreakdown(w io.Writer, aggregates []*Aggregate, records []UsageRecord
 		}
 		var cells [][]string
 		for _, b := range rows {
-			cells = append(cells, []string{b.Model, formatTokens(b.Input), formatTokens(b.Output), formatTokens(b.CacheRead), fmt.Sprintf("$%.4f", b.Cost)})
+			cells = append(cells, []string{b.Model, FormatTokens(b.Input), FormatTokens(b.Output), FormatTokens(b.CacheRead), fmt.Sprintf("$%.4f", b.Cost)})
 		}
 		columns := []tableColumn{
 			{header: "model", alignRight: false, flex: true, minWidth: 12, maxWidth: 0},
@@ -251,10 +251,10 @@ type tableColumn struct {
 	maxWidth   int
 }
 
-func effectiveWidth(forcedWidth, indent int) int {
+func EffectiveWidth(forcedWidth, indent int) int {
 	width := forcedWidth
 	if width <= 0 {
-		width = terminalWidth()
+		width = TerminalWidth()
 	}
 	if width <= 0 {
 		width = 120
@@ -419,7 +419,7 @@ func truncate(s string, maxLen int) string {
 	return s
 }
 
-func terminalWidth() int {
+func TerminalWidth() int {
 	defaultWidth := 120
 
 	cmd := exec.Command("stty", "size")
@@ -442,8 +442,8 @@ func terminalWidth() int {
 	return defaultWidth
 }
 
-func renderJSON(w io.Writer, records []UsageRecord, prices map[string]ModelPrice, mode string) error {
-	aggregates := aggregateBy(records, prices, mode)
+func RenderJSON(w io.Writer, records []UsageRecord, prices map[string]ModelPrice, mode string) error {
+	aggregates := AggregateBy(records, prices, mode)
 	type jsonModel struct {
 		Model       string  `json:"model"`
 		Input       int64   `json:"input_tokens"`
@@ -475,7 +475,7 @@ func renderJSON(w io.Writer, records []UsageRecord, prices map[string]ModelPrice
 	default:
 		keyFn = func(r UsageRecord) AggregateKey { return AggregateKey(r.Timestamp.Format("2006-01-02")) }
 	}
-	breakdowns := breakdownByModel(records, prices, keyFn)
+	breakdowns := BreakdownByModel(records, prices, keyFn)
 
 	out := make([]jsonAggregate, 0, len(aggregates))
 	for _, agg := range aggregates {
@@ -507,7 +507,7 @@ func renderJSON(w io.Writer, records []UsageRecord, prices map[string]ModelPrice
 	return enc.Encode(out)
 }
 
-func formatTokens(n int64) string {
+func FormatTokens(n int64) string {
 	if n < 1000 {
 		return fmt.Sprintf("%d", n)
 	}
@@ -517,7 +517,7 @@ func formatTokens(n int64) string {
 	return fmt.Sprintf("%.2fM", float64(n)/1_000_000)
 }
 
-func parseDate(s string) (time.Time, error) {
+func ParseDate(s string) (time.Time, error) {
 	if s == "" {
 		return time.Time{}, nil
 	}

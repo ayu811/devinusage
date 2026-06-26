@@ -45,9 +45,9 @@ private func resizedImage(_ image: NSImage, size: NSSize) -> NSImage {
 
 func devinMenuBarIcon(size: CGFloat = 18) -> NSImage {
     if let image = loadDevinMenuBarIcon() {
-        let scaled = resizedImage(image, size: NSSize(width: size, height: size))
-        scaled.isTemplate = true
-        return scaled
+        // DevinMenuBar.png is already 18pt @ 4x (72px) with transparent background.
+        image.isTemplate = true
+        return image
     }
     return fallbackMenuBarIcon(size: size)
 }

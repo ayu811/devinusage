@@ -26,7 +26,7 @@ func devinMenuBarIcon() -> NSImage {
 }
 
 func devinAppIcon(size: CGFloat = 128) -> NSImage {
-    let image = loadIcon(named: "DevinBarApp") ?? loadIcon(named: "Devin") ?? NSImage()
+    let image = loadIcon(named: "Devin") ?? NSImage()
     let scaled = NSImage(size: NSSize(width: size, height: size))
     scaled.lockFocus()
     if let context = NSGraphicsContext.current?.cgContext {

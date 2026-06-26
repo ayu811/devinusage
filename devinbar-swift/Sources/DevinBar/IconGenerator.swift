@@ -38,7 +38,7 @@ private func resizedImage(_ image: NSImage, size: NSSize) -> NSImage {
 func devinMenuBarIcon(size: CGFloat = 18) -> NSImage {
     if let devin = loadDevinIcon() {
         let scaled = resizedImage(devin, size: NSSize(width: size, height: size))
-        scaled.isTemplate = false
+        scaled.isTemplate = true
         return scaled
     }
     return fallbackMenuBarIcon(size: size)
@@ -56,24 +56,7 @@ private func fallbackMenuBarIcon(size: CGFloat) -> NSImage {
     image.lockFocus()
     defer { image.unlockFocus() }
 
-    let context = NSGraphicsContext.current?.cgContext
-    let center = CGPoint(x: size / 2, y: size / 2)
-    let radius = size / 2 - 1
-    let gradient = CGGradient(
-        colorsSpace: CGColorSpaceCreateDeviceRGB(),
-        colors: [NSColor.systemIndigo.cgColor, NSColor.purple.cgColor] as CFArray,
-        locations: [0, 1]
-    )
-    context?.drawRadialGradient(
-        gradient!,
-        startCenter: center,
-        startRadius: 0,
-        endCenter: center,
-        endRadius: radius,
-        options: .drawsBeforeStartLocation
-    )
-
-    let font = NSFont.systemFont(ofSize: size * 0.65, weight: .bold)
+    let font = NSFont.systemFont(ofSize: size * 0.65, weight: .semibold)
     let text = NSAttributedString(
         string: "D",
         attributes: [
@@ -88,7 +71,7 @@ private func fallbackMenuBarIcon(size: CGFloat) -> NSImage {
         width: textSize.width,
         height: textSize.height
     ))
-    image.isTemplate = false
+    image.isTemplate = true
     return image
 }
 
@@ -101,20 +84,8 @@ private func fallbackAppIcon(size: CGFloat) -> NSImage {
     let path = NSBezierPath(roundedRect: rect, xRadius: size * 0.22, yRadius: size * 0.22)
     path.addClip()
 
-    let gradient = CGGradient(
-        colorsSpace: CGColorSpaceCreateDeviceRGB(),
-        colors: [
-            NSColor(red: 0.35, green: 0.35, blue: 0.95, alpha: 1.0).cgColor,
-            NSColor(red: 0.55, green: 0.25, blue: 0.85, alpha: 1.0).cgColor
-        ] as CFArray,
-        locations: [0, 1]
-    )
-    NSGraphicsContext.current?.cgContext.drawLinearGradient(
-        gradient!,
-        start: CGPoint(x: 0, y: size),
-        end: CGPoint(x: size, y: 0),
-        options: []
-    )
+    NSColor.black.setFill()
+    rect.fill()
 
     let font = NSFont.systemFont(ofSize: size * 0.55, weight: .bold)
     let text = NSAttributedString(

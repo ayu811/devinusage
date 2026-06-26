@@ -218,13 +218,44 @@ private func runDevinUsage(args: [String]) -> Data? {
             process.executableURL = URL(fileURLWithPath: path)
             process.arguments = args
             let pipe = Pipe()
+            let errPipe = Pipe()
             process.standardOutput = pipe
-            process.standardError = FileHandle.nullDevice
+            process.standardError = errPipe
+
+            var outputData = Data()
+            var errorData = Data()
+
+            pipe.fileHandleForReading.readabilityHandler = { handle in
+                let data = handle.availableData
+                if data.isEmpty {
+                    handle.readabilityHandler = nil
+                } else {
+                    outputData.append(data)
+                }
+            }
+
+            errPipe.fileHandleForReading.readabilityHandler = { handle in
+                let data = handle.availableData
+                if data.isEmpty {
+                    handle.readabilityHandler = nil
+                } else {
+                    errorData.append(data)
+                }
+            }
+
             do {
                 try process.run()
                 process.waitUntilExit()
+                // Give a moment for any final async reads
+                Thread.sleep(forTimeInterval: 0.05)
+                pipe.fileHandleForReading.readabilityHandler = nil
+                errPipe.fileHandleForReading.readabilityHandler = nil
+
                 if process.terminationStatus == 0 {
-                    return pipe.fileHandleForReading.readDataToEndOfFile()
+                    return outputData
+                } else {
+                    let errString = String(data: errorData, encoding: .utf8) ?? "(none)"
+                    NSLog("[DevinBar] devinusage failed: \(errString)")
                 }
             } catch {
                 continue

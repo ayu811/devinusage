@@ -1,0 +1,136 @@
+{
+  "_note": "Prices are per 1 million tokens. Adjust to match your actual Devin CLI / model provider pricing.",
+  "_unknown_models": "Models not listed below are priced at $0 and marked as 'unknown' in reports.",
+  "adaptive": {
+    "input": 0.5,
+    "output": 2,
+    "cache_read": 0.1,
+    "cache_creation": 0.5
+  },
+  "claude-opus-4-7": {
+    "input": 5,
+    "output": 25,
+    "cache_read": 0.5,
+    "cache_creation": 6.25
+  },
+  "claude-opus-4-7-low": {
+    "input": 5,
+    "output": 25,
+    "cache_read": 0.5,
+    "cache_creation": 6.25
+  },
+  "claude-opus-4-7-medium": {
+    "input": 5,
+    "output": 25,
+    "cache_read": 0.5,
+    "cache_creation": 6.25
+  },
+  "claude-sonnet-4-6": {
+    "input": 3,
+    "output": 15,
+    "cache_read": 0.3,
+    "cache_creation": 3.75
+  },
+  "compactor": {
+    "input": 0.5,
+    "output": 2,
+    "cache_read": 0.1,
+    "cache_creation": 0.5
+  },
+  "glm-5-2": {
+    "input": 1.4,
+    "output": 4.4,
+    "cache_read": 0.26,
+    "cache_creation": 1.4
+  },
+  "gpt-4o": {
+    "input": 2.5,
+    "output": 10,
+    "cache_read": 1.25,
+    "cache_creation": 2.5
+  },
+  "gpt-4o-mini": {
+    "input": 0.15,
+    "output": 0.6,
+    "cache_read": 0.075,
+    "cache_creation": 0.15
+  },
+  "kimi-k2-5": {
+    "input": 0.6,
+    "output": 3,
+    "cache_read": 0.1,
+    "cache_creation": 0.6
+  },
+  "kimi-k2-6": {
+    "input": 0.95,
+    "output": 4,
+    "cache_read": 0.16,
+    "cache_creation": 0.95
+  },
+  "kimi-k2-7": {
+    "input": 0.95,
+    "output": 4,
+    "cache_read": 0.19,
+    "cache_creation": 0.95
+  },
+  "model_google_gemini_3_0_flash_low": {
+    "input": 0.25,
+    "output": 1.5,
+    "cache_read": 0.03,
+    "cache_creation": 0.25
+  },
+  "model_private_11": {
+    "input": 0.5,
+    "output": 2,
+    "cache_read": 0.1,
+    "cache_creation": 0.5
+  },
+  "model_swe_1_5": {
+    "input": 0.5,
+    "output": 2,
+    "cache_read": 0.1,
+    "cache_creation": 0.5
+  },
+  "model_swe_1_5_slow": {
+    "input": 0.5,
+    "output": 2,
+    "cache_read": 0.1,
+    "cache_creation": 0.5
+  },
+  "o3": {
+    "input": 2,
+    "output": 8,
+    "cache_read": 0.5,
+    "cache_creation": 2
+  },
+  "o4-mini": {
+    "input": 1.1,
+    "output": 4.4,
+    "cache_read": 0.275,
+    "cache_creation": 1.1
+  },
+  "summarizer": {
+    "input": 0.5,
+    "output": 2,
+    "cache_read": 0.1,
+    "cache_creation": 0.5
+  },
+  "swe-1-6": {
+    "input": 0.5,
+    "output": 2,
+    "cache_read": 0.1,
+    "cache_creation": 0.5
+  },
+  "swe-1-6-fast": {
+    "input": 0.5,
+    "output": 2,
+    "cache_read": 0.1,
+    "cache_creation": 0.5
+  },
+  "swe-check": {
+    "input": 0.5,
+    "output": 2,
+    "cache_read": 0.1,
+    "cache_creation": 0.5
+  }
+}

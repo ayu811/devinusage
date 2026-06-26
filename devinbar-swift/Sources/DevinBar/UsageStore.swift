@@ -78,6 +78,7 @@ class UsageStore: ObservableObject {
 
     @Published var dailyHistory: [DailyPoint] = []
     @Published var modelShares: [ModelShare] = []
+    @Published var lastUpdated: Date = Date.distantPast
 
     private var timer: Timer?
 
@@ -94,6 +95,9 @@ class UsageStore: ObservableObject {
             self.updateMonth()
             self.updateSession()
             self.updateHistory()
+            DispatchQueue.main.async {
+                self.lastUpdated = Date()
+            }
         }
     }
 

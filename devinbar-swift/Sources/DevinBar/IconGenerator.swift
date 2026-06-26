@@ -51,13 +51,16 @@ func devinAppIcon(size: CGFloat = 128) -> NSImage {
 }
 
 private func extractForegroundTemplate(from image: NSImage, size: CGFloat) -> NSImage? {
-    let scaled = resizedImage(image, size: NSSize(width: size, height: size))
+    // Supersample to avoid jagged edges: render at 4x, extract the symbol, then scale down.
+    let scale: CGFloat = 4
+    let superSize = size * scale
+    let scaled = resizedImage(image, size: NSSize(width: superSize, height: superSize))
     guard let cgImage = scaled.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
         return nil
     }
 
-    let width = Int(size)
-    let height = Int(size)
+    let width = Int(superSize)
+    let height = Int(superSize)
     let bytesPerPixel = 4
     let bytesPerRow = bytesPerPixel * width
     let bitsPerComponent = 8
@@ -75,7 +78,7 @@ private func extractForegroundTemplate(from image: NSImage, size: CGFloat) -> NS
         return nil
     }
 
-    context.draw(cgImage, in: CGRect(x: 0, y: 0, width: size, height: size))
+    context.draw(cgImage, in: CGRect(x: 0, y: 0, width: superSize, height: superSize))
 
     for y in 0..<height {
         for x in 0..<width {
@@ -87,7 +90,7 @@ private func extractForegroundTemplate(from image: NSImage, size: CGFloat) -> NS
 
             // The foreground symbol is bright white; the background is a dark gradient.
             let brightness = max(r, g, b)
-            let threshold: CGFloat = 0.75
+            let threshold: CGFloat = 0.78
 
             if a > 0.1 && brightness > threshold {
                 pixels[index] = 0
@@ -107,9 +110,20 @@ private func extractForegroundTemplate(from image: NSImage, size: CGFloat) -> NS
         return nil
     }
 
-    let newImage = NSImage(cgImage: newCGImage, size: NSSize(width: size, height: size))
-    newImage.isTemplate = true
-    return newImage
+    let extracted = NSImage(cgImage: newCGImage, size: NSSize(width: superSize, height: superSize))
+
+    // Scale down to target size with high-quality interpolation
+    let final = NSImage(size: NSSize(width: size, height: size))
+    final.lockFocus()
+    defer { final.unlockFocus() }
+    let ctx = NSGraphicsContext.current?.cgContext
+    ctx?.interpolationQuality = .high
+    extracted.draw(in: NSRect(origin: .zero, size: NSSize(width: size, height: size)),
+                   from: NSRect(origin: .zero, size: NSSize(width: superSize, height: superSize)),
+                   operation: .sourceOver,
+                   fraction: 1.0)
+    final.isTemplate = true
+    return final
 }
 
 private func fallbackMenuBarIcon(size: CGFloat) -> NSImage {

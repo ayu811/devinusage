@@ -37,10 +37,11 @@ struct ContentView: View {
 
     var header: some View {
         HStack(spacing: 8) {
-            Image(nsImage: devinMenuBarIcon())
+            Image(nsImage: devinAppIcon(size: 22))
                 .resizable()
                 .aspectRatio(contentMode: .fit)
                 .frame(width: 22, height: 22)
+                .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
 
             Text("DevinBar")
                 .font(.system(size: 15, weight: .semibold))

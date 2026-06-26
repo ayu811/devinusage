@@ -21,7 +21,7 @@ mkdir -p "$APP_DIR/Contents/Resources"
 
 cp "$BUILD_DIR/release/DevinBar" "$APP_DIR/Contents/MacOS/DevinBar"
 cp "$BUILD_DIR/devinusage" "$APP_DIR/Contents/MacOS/devinusage"
-cp "$SCRIPT_DIR/Resources/Devin.icns" "$APP_DIR/Contents/Resources/Devin.icns"
+cp "$SCRIPT_DIR/Resources/DevinBarApp.icns" "$APP_DIR/Contents/Resources/DevinBarApp.icns"
 cp "$SCRIPT_DIR/Resources/DevinMenuBar.png" "$APP_DIR/Contents/Resources/DevinMenuBar.png"
 
 cat > "$APP_DIR/Contents/Info.plist" <<'EOF'
@@ -34,7 +34,7 @@ cat > "$APP_DIR/Contents/Info.plist" <<'EOF'
     <key>CFBundleExecutable</key>
     <string>DevinBar</string>
     <key>CFBundleIconFile</key>
-    <string>Devin.icns</string>
+    <string>DevinBarApp.icns</string>
     <key>CFBundleIdentifier</key>
     <string>com.example.devinbar</string>
     <key>CFBundleInfoDictionaryVersion</key>

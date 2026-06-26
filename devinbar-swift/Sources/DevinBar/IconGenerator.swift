@@ -36,10 +36,9 @@ private func resizedImage(_ image: NSImage, size: NSSize) -> NSImage {
 }
 
 func devinMenuBarIcon(size: CGFloat = 18) -> NSImage {
-    if let devin = loadDevinIcon() {
-        let scaled = resizedImage(devin, size: NSSize(width: size, height: size))
-        scaled.isTemplate = false
-        return scaled
+    if let devin = loadDevinIcon(),
+       let template = extractForegroundTemplate(from: devin, size: size) {
+        return template
     }
     return fallbackMenuBarIcon(size: size)
 }
@@ -49,6 +48,68 @@ func devinAppIcon(size: CGFloat = 128) -> NSImage {
         return resizedImage(devin, size: NSSize(width: size, height: size))
     }
     return fallbackAppIcon(size: size)
+}
+
+private func extractForegroundTemplate(from image: NSImage, size: CGFloat) -> NSImage? {
+    let scaled = resizedImage(image, size: NSSize(width: size, height: size))
+    guard let cgImage = scaled.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
+        return nil
+    }
+
+    let width = Int(size)
+    let height = Int(size)
+    let bytesPerPixel = 4
+    let bytesPerRow = bytesPerPixel * width
+    let bitsPerComponent = 8
+    var pixels = [UInt8](repeating: 0, count: width * height * bytesPerPixel)
+
+    guard let context = CGContext(
+        data: &pixels,
+        width: width,
+        height: height,
+        bitsPerComponent: bitsPerComponent,
+        bytesPerRow: bytesPerRow,
+        space: CGColorSpaceCreateDeviceRGB(),
+        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+    ) else {
+        return nil
+    }
+
+    context.draw(cgImage, in: CGRect(x: 0, y: 0, width: size, height: size))
+
+    for y in 0..<height {
+        for x in 0..<width {
+            let index = (y * width + x) * bytesPerPixel
+            let r = CGFloat(pixels[index]) / 255.0
+            let g = CGFloat(pixels[index + 1]) / 255.0
+            let b = CGFloat(pixels[index + 2]) / 255.0
+            let a = CGFloat(pixels[index + 3]) / 255.0
+
+            // The foreground symbol is bright white; the background is a dark gradient.
+            let brightness = max(r, g, b)
+            let threshold: CGFloat = 0.75
+
+            if a > 0.1 && brightness > threshold {
+                pixels[index] = 0
+                pixels[index + 1] = 0
+                pixels[index + 2] = 0
+                pixels[index + 3] = 255
+            } else {
+                pixels[index] = 0
+                pixels[index + 1] = 0
+                pixels[index + 2] = 0
+                pixels[index + 3] = 0
+            }
+        }
+    }
+
+    guard let newCGImage = context.makeImage() else {
+        return nil
+    }
+
+    let newImage = NSImage(cgImage: newCGImage, size: NSSize(width: size, height: size))
+    newImage.isTemplate = true
+    return newImage
 }
 
 private func fallbackMenuBarIcon(size: CGFloat) -> NSImage {

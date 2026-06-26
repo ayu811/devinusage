@@ -15,16 +15,14 @@ struct ContentView: View {
             Divider()
                 .padding(.horizontal, 20)
 
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 16) {
-                    todaySection
-                    chartSection
-                    modelSection
-                    bottomGrid
-                }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
+            VStack(alignment: .leading, spacing: 18) {
+                todaySection
+                chartSection
+                modelSection
+                bottomGrid
             }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
 
             Divider()
                 .padding(.horizontal, 20)
@@ -33,7 +31,7 @@ struct ContentView: View {
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
         }
-        .frame(width: 280, height: 420)
+        .frame(width: 280, height: 540)
         .background(Color(nsColor: .windowBackgroundColor))
     }
 

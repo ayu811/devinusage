@@ -4,3 +4,4 @@
 /devinbar-swift/.build
 *.exe
 *.log
+.DS_Store

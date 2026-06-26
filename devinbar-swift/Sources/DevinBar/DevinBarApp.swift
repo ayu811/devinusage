@@ -5,8 +5,14 @@ struct DevinBarApp: App {
     @StateObject private var store = UsageStore()
 
     var body: some Scene {
-        MenuBarExtra("Devin", systemImage: "d.circle.fill") {
+        MenuBarExtra {
             ContentView(store: store)
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "d.circle.fill")
+                Text(store.todayCost, format: .currency(code: "USD").precision(.fractionLength(0)))
+                    .monospacedDigit()
+            }
         }
         .menuBarExtraStyle(.window)
     }

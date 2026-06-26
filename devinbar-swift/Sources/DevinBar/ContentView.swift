@@ -1,86 +1,205 @@
 import SwiftUI
+import Charts
 
 struct ContentView: View {
     @ObservedObject var store: UsageStore
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            header
-            todaySection
-            monthSection
-            sessionSection
-            Spacer()
-            footer
+        ScrollView {
+            VStack(spacing: 20) {
+                header
+                todayCard
+                chartCard
+                modelBreakdownCard
+                gridCards
+                footer
+            }
+            .padding()
         }
-        .padding()
-        .frame(width: 320, height: 440)
+        .frame(width: 360, height: 600)
+        .background(Color(nsColor: .windowBackgroundColor))
     }
 
     var header: some View {
         HStack(spacing: 10) {
-            Image(systemName: "d.circle.fill")
-                .font(.title2)
-                .foregroundStyle(.primary)
+            ZStack {
+                Circle()
+                    .fill(LinearGradient(
+                        colors: [.indigo, .purple],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing))
+                    .frame(width: 36, height: 36)
+                Text("D")
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+            }
             Text("Devin Usage")
-                .font(.title2.bold())
+                .font(.system(size: 20, weight: .bold, design: .rounded))
             Spacer()
         }
     }
 
-    var todaySection: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Today")
-                .font(.caption.uppercaseSmallCaps())
+    var todayCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("TODAY")
+                .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
             Text(store.todayCost, format: .currency(code: "USD").precision(.fractionLength(2)))
-                .font(.system(size: 32, weight: .bold, design: .rounded))
-            Text("\(store.todayInput) in / \(store.todayOutput) out / \(store.todayCache) cache")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(.system(size: 42, weight: .bold, design: .rounded))
+                .foregroundStyle(.primary)
+            HStack(spacing: 12) {
+                tokenBadge(value: store.todayInput, label: "input", color: .blue)
+                tokenBadge(value: store.todayOutput, label: "output", color: .green)
+                tokenBadge(value: store.todayCache, label: "cache", color: .orange)
+            }
         }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(LinearGradient(
+                    colors: [Color.indigo.opacity(0.15), Color.purple.opacity(0.10)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.indigo.opacity(0.2), lineWidth: 1)
+        )
     }
 
-    var monthSection: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("This Month")
-                .font(.caption.uppercaseSmallCaps())
+    var chartCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("7-DAY COST")
+                .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
-            Text(store.monthCost, format: .currency(code: "USD").precision(.fractionLength(2)))
-                .font(.system(size: 24, weight: .semibold, design: .rounded))
-            Text("\(store.monthInput) in / \(store.monthOutput) out / \(store.monthCache) cache")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            if store.dailyHistory.isEmpty {
+                Text("No recent data")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(height: 120)
+            } else {
+                Chart(store.dailyHistory) { point in
+                    BarMark(
+                        x: .value("Date", point.date, unit: .day),
+                        y: .value("Cost", point.cost)
+                    )
+                    .foregroundStyle(LinearGradient(
+                        colors: [.indigo, .purple],
+                        startPoint: .bottom,
+                        endPoint: .top))
+                    .cornerRadius(4)
+                }
+                .frame(height: 130)
+                .chartYAxis {
+                    AxisMarks(position: .leading)
+                }
+                .chartXAxis {
+                    AxisMarks(values: .stride(by: .day)) { value in
+                        AxisGridLine()
+                        AxisValueLabel(format: .dateTime.day())
+                    }
+                }
+            }
         }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color(nsColor: .controlBackgroundColor))
+        )
     }
 
-    var sessionSection: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Current Session")
-                .font(.caption.uppercaseSmallCaps())
+    var modelBreakdownCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("TODAY BY MODEL")
+                .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
-            Text(store.sessionCost, format: .currency(code: "USD").precision(.fractionLength(2)))
-                .font(.system(size: 20, weight: .semibold, design: .rounded))
-            Text(store.sessionLabel)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .truncationMode(.tail)
-            Text("\(store.sessionInput) in / \(store.sessionOutput) out / \(store.sessionCache) cache")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            if store.modelShares.isEmpty {
+                Text("No model data")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(store.modelShares) { share in
+                        HStack {
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(share.color)
+                                .frame(width: 10, height: 10)
+                            Text(share.model)
+                                .font(.caption)
+                                .lineLimit(1)
+                            Spacer()
+                            Text(share.cost, format: .currency(code: "USD").precision(.fractionLength(2)))
+                                .font(.caption.weight(.semibold))
+                                .monospacedDigit()
+                        }
+                    }
+                }
+                .padding(.top, 4)
+            }
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color(nsColor: .controlBackgroundColor))
+        )
+    }
+
+    var gridCards: some View {
+        HStack(spacing: 12) {
+            smallCard(title: "THIS MONTH", cost: store.monthCost, tokens: "\(store.monthInput) / \(store.monthOutput) / \(store.monthCache)")
+            smallCard(title: "SESSION", cost: store.sessionCost, tokens: store.sessionLabel)
         }
     }
 
     var footer: some View {
-        HStack {
+        HStack(spacing: 12) {
             Button("Refresh") {
                 store.refresh()
             }
             .keyboardShortcut("r")
-            Spacer()
+            .buttonStyle(.borderedProminent)
+            .tint(.indigo)
+
             Button("Quit") {
                 NSApplication.shared.terminate(nil)
             }
+            .buttonStyle(.bordered)
         }
+    }
+
+    func tokenBadge(value: String, label: String, color: Color) -> some View {
+        HStack(spacing: 4) {
+            Circle()
+                .fill(color)
+                .frame(width: 6, height: 6)
+            Text(value)
+                .font(.caption.weight(.medium))
+                .monospacedDigit()
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    func smallCard(title: String, cost: Double, tokens: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Text(cost, format: .currency(code: "USD").precision(.fractionLength(2)))
+                .font(.system(size: 18, weight: .bold, design: .rounded))
+            Text(tokens)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+                .truncationMode(.tail)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color(nsColor: .controlBackgroundColor))
+        )
     }
 }

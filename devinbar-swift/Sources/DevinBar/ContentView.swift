@@ -22,7 +22,6 @@ struct ContentView: View {
             VStack(spacing: 14) {
                 header
                 todayCard
-                meterCard
                 chartCard
                 modelBreakdownCard
                 bottomGrid
@@ -30,7 +29,7 @@ struct ContentView: View {
             }
             .padding()
         }
-        .frame(width: 320, height: 540)
+        .frame(width: 320, height: 500)
         .background(
             ZStack {
                 Color.clear
@@ -88,50 +87,6 @@ struct ContentView: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(glass)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color.white.opacity(colorScheme == .dark ? 0.12 : 0.35), lineWidth: 0.5)
-        )
-    }
-
-    var meterCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Daily Meter")
-                    .font(.caption2.weight(.medium))
-                    .foregroundStyle(textSecondary)
-                    .textCase(.uppercase)
-                Spacer()
-                Text("\(Int(min(store.todayCost / 50.0, 1.0) * 100))%")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(textSecondary)
-            }
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 4, style: .continuous)
-                        .fill(Color.white.opacity(colorScheme == .dark ? 0.08 : 0.25))
-                        .frame(height: 6)
-                    RoundedRectangle(cornerRadius: 4, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [Color.indigo.opacity(0.7), Color.purple.opacity(0.7)],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .frame(width: max(4, geo.size.width * min(CGFloat(store.todayCost / 50.0), 1.0)), height: 6)
-                }
-            }
-            .frame(height: 6)
-            Text("of $50.00 estimated daily budget")
-                .font(.caption2)
-                .foregroundStyle(textSecondary)
-        }
-        .padding()
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(glass)

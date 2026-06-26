@@ -2,7 +2,9 @@
 
 A macOS menu-bar companion for [Devin CLI](https://cli.devin.ai/) that shows your daily, monthly, and session token usage with cost estimates.
 
-![DevinBar screenshot](docs/screenshot_2.jpg)
+![DevinBar menu bar](docs/screenshot_2.jpg)
+
+![DevinBar popup](docs/screenshot_1.png)
 
 ## Features
 

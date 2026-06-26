@@ -453,15 +453,16 @@ func RenderJSON(w io.Writer, records []UsageRecord, prices map[string]ModelPrice
 		Cost        float64 `json:"cost_usd"`
 	}
 	type jsonAggregate struct {
-		Key         string      `json:"key"`
-		Label       string      `json:"label"`
-		Models      []string    `json:"models"`
-		Input       int64       `json:"input_tokens"`
-		Output      int64       `json:"output_tokens"`
-		CacheRead   int64       `json:"cache_read_tokens"`
-		CacheCreate int64       `json:"cache_creation_tokens"`
-		Cost        float64     `json:"cost_usd"`
-		Breakdown   []jsonModel `json:"breakdown,omitempty"`
+		Key            string      `json:"key"`
+		Label          string      `json:"label"`
+		Models         []string    `json:"models"`
+		Input          int64       `json:"input_tokens"`
+		Output         int64       `json:"output_tokens"`
+		CacheRead      int64       `json:"cache_read_tokens"`
+		CacheCreate    int64       `json:"cache_creation_tokens"`
+		Cost           float64     `json:"cost_usd"`
+		LastActivityAt int64       `json:"last_activity_at"`
+		Breakdown      []jsonModel `json:"breakdown,omitempty"`
 	}
 
 	var keyFn func(UsageRecord) AggregateKey
@@ -477,17 +478,26 @@ func RenderJSON(w io.Writer, records []UsageRecord, prices map[string]ModelPrice
 	}
 	breakdowns := BreakdownByModel(records, prices, keyFn)
 
+	lastActivity := make(map[AggregateKey]int64)
+	for _, r := range records {
+		key := keyFn(r)
+		if r.Timestamp.Unix() > lastActivity[key] {
+			lastActivity[key] = r.Timestamp.Unix()
+		}
+	}
+
 	out := make([]jsonAggregate, 0, len(aggregates))
 	for _, agg := range aggregates {
 		ja := jsonAggregate{
-			Key:         string(agg.Key),
-			Label:       agg.Label,
-			Models:      agg.modelList(),
-			Input:       agg.Input,
-			Output:      agg.Output,
-			CacheRead:   agg.CacheRead,
-			CacheCreate: agg.CacheCreate,
-			Cost:        agg.Cost,
+			Key:            string(agg.Key),
+			Label:          agg.Label,
+			Models:         agg.modelList(),
+			Input:          agg.Input,
+			Output:         agg.Output,
+			CacheRead:      agg.CacheRead,
+			CacheCreate:    agg.CacheCreate,
+			Cost:           agg.Cost,
+			LastActivityAt: lastActivity[agg.Key],
 		}
 		for _, b := range breakdowns[agg.Key] {
 			ja.Breakdown = append(ja.Breakdown, jsonModel{

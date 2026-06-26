@@ -41,9 +41,6 @@ cd devinbar-swift
 open ../DevinBar.app
 ```
 
-The menu-bar icon uses the Devin app icon from your local `/Applications/Devin.app`.
-
-
 ## CLI usage
 
 ```bash

@@ -9,29 +9,29 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 0) {
             header
                 .padding(.horizontal, 20)
-                .padding(.top, 16)
-                .padding(.bottom, 12)
+                .padding(.top, 12)
+                .padding(.bottom, 8)
 
             Divider()
                 .padding(.horizontal, 20)
 
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 14) {
                 todaySection
                 chartSection
                 modelSection
                 bottomGrid
             }
             .padding(.horizontal, 20)
-            .padding(.vertical, 16)
+            .padding(.vertical, 12)
 
             Divider()
                 .padding(.horizontal, 20)
 
             footer
                 .padding(.horizontal, 20)
-                .padding(.vertical, 12)
+                .padding(.vertical, 10)
         }
-        .frame(width: 280, height: 540)
+        .frame(width: 280, height: 470)
         .background(Color(nsColor: .windowBackgroundColor))
     }
 

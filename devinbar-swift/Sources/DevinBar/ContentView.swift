@@ -5,109 +5,106 @@ struct ContentView: View {
     @ObservedObject var store: UsageStore
     @Environment(\.colorScheme) private var colorScheme
 
-    private var glass: some ShapeStyle {
-        .ultraThinMaterial
+    private var cardBackground: Color {
+        colorScheme == .dark
+            ? Color.white.opacity(0.06)
+            : Color.white.opacity(0.55)
     }
 
-    private var textPrimary: Color {
-        colorScheme == .dark ? .white : Color(nsColor: .labelColor)
+    private var primaryText: Color {
+        colorScheme == .dark ? .white : .black
     }
 
-    private var textSecondary: Color {
-        colorScheme == .dark ? .white.opacity(0.6) : Color(nsColor: .secondaryLabelColor)
+    private var secondaryText: Color {
+        colorScheme == .dark ? .white.opacity(0.55) : .black.opacity(0.55)
+    }
+
+    private var subtleStroke: Color {
+        colorScheme == .dark ? .white.opacity(0.1) : .black.opacity(0.08)
     }
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 14) {
+            VStack(alignment: .leading, spacing: 12) {
                 header
-                todayCard
+                todaySection
                 chartCard
-                modelBreakdownCard
+                modelCard
                 bottomGrid
                 footer
             }
-            .padding()
+            .padding(16)
         }
-        .frame(width: 320, height: 500)
+        .frame(width: 300, height: 460)
         .background(
-            ZStack {
-                Color.clear
-                    .background(.ultraThinMaterial)
-                RadialGradient(
-                    colors: [
-                        Color.indigo.opacity(0.12),
-                        Color.purple.opacity(0.08),
-                        Color.clear
-                    ],
-                    center: .topLeading,
-                    startRadius: 0,
-                    endRadius: 360
-                )
-                .opacity(0.7)
-            }
+            Color(nsColor: colorScheme == .dark ? .controlBackgroundColor : .windowBackgroundColor)
         )
     }
 
     var header: some View {
         HStack(spacing: 10) {
-            Image(nsImage: devinAppIcon(size: 32))
+            Image(nsImage: devinAppIcon(size: 28))
                 .resizable()
                 .aspectRatio(contentMode: .fit)
-                .frame(width: 32, height: 32)
+                .frame(width: 28, height: 28)
                 .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
-            Text("DevinBar")
-                .font(.system(size: 17, weight: .semibold, design: .rounded))
-                .foregroundStyle(textPrimary)
+
+            VStack(alignment: .leading, spacing: 0) {
+                Text("DevinBar")
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .foregroundStyle(primaryText)
+                Text("Updated \(timeAgo(store.lastUpdated))")
+                    .font(.system(size: 10))
+                    .foregroundStyle(secondaryText)
+            }
+
             Spacer()
-            Text("Updated \(timeAgo(store.lastUpdated))")
-                .font(.caption2)
-                .foregroundStyle(textSecondary)
         }
     }
 
-    var todayCard: some View {
-        VStack(alignment: .leading, spacing: 6) {
+    var todaySection: some View {
+        VStack(alignment: .leading, spacing: 8) {
             Text("Today")
-                .font(.caption2.weight(.medium))
-                .foregroundStyle(textSecondary)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(secondaryText)
                 .textCase(.uppercase)
-            HStack(alignment: .lastTextBaseline, spacing: 4) {
-                Text(store.todayCost, format: .currency(code: "USD").precision(.fractionLength(2)))
-                    .font(.system(size: 38, weight: .bold, design: .rounded))
-                    .foregroundStyle(textPrimary)
-                    .contentTransition(.numericText())
+                .tracking(0.5)
+
+            Text(store.todayCost, format: .currency(code: "USD").precision(.fractionLength(2)))
+                .font(.system(size: 36, weight: .bold, design: .rounded))
+                .foregroundStyle(primaryText)
+
+            HStack(spacing: 16) {
+                tokenStat(icon: "arrow.down.circle", value: store.todayInput, label: "input")
+                tokenStat(icon: "arrow.up.circle", value: store.todayOutput, label: "output")
+                tokenStat(icon: "clock.arrow.circlepath", value: store.todayCache, label: "cache")
             }
-            HStack(spacing: 12) {
-                tokenStat(value: store.todayInput, label: "input")
-                tokenStat(value: store.todayOutput, label: "output")
-                tokenStat(value: store.todayCache, label: "cache")
-            }
-            .padding(.top, 2)
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(glass)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(cardBackground)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color.white.opacity(colorScheme == .dark ? 0.12 : 0.35), lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(subtleStroke, lineWidth: 0.5)
         )
     }
 
     var chartCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("7-Day Spend")
-                .font(.caption2.weight(.medium))
-                .foregroundStyle(textSecondary)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(secondaryText)
                 .textCase(.uppercase)
+                .tracking(0.5)
+
             if store.dailyHistory.isEmpty {
                 Text("No recent data")
-                    .font(.caption)
-                    .foregroundStyle(textSecondary)
-                    .frame(height: 90)
+                    .font(.system(size: 12))
+                    .foregroundStyle(secondaryText)
+                    .frame(maxWidth: .infinity, minHeight: 80)
             } else {
                 Chart(store.dailyHistory) { point in
                     BarMark(
@@ -115,22 +112,20 @@ struct ContentView: View {
                         y: .value("Cost", point.cost)
                     )
                     .foregroundStyle(
-                        LinearGradient(
-                            colors: [Color.indigo.opacity(0.8), Color.purple.opacity(0.6)],
-                            startPoint: .bottom,
-                            endPoint: .top
-                        )
+                        colorScheme == .dark
+                            ? Color.white.opacity(0.85)
+                            : Color.black.opacity(0.75)
                     )
                     .cornerRadius(3)
                 }
-                .frame(height: 90)
+                .frame(height: 80)
                 .chartYAxis {
                     AxisMarks(position: .leading) { value in
                         AxisValueLabel {
                             if let cost = value.as(Double.self) {
                                 Text(cost, format: .currency(code: "USD").precision(.fractionLength(0)))
                                     .font(.system(size: 8))
-                                    .foregroundStyle(textSecondary)
+                                    .foregroundStyle(secondaryText)
                             }
                         }
                     }
@@ -138,93 +133,97 @@ struct ContentView: View {
                 .chartXAxis {
                     AxisMarks(values: .stride(by: .day)) { value in
                         AxisValueLabel(format: .dateTime.day())
+                            .font(.system(size: 8))
                     }
                 }
                 .chartBackground { _ in
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.white.opacity(colorScheme == .dark ? 0.05 : 0.15))
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.04))
+                }
+                .chartPlotStyle { plotArea in
+                    plotArea
+                        .background(
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.04))
+                        )
                 }
             }
         }
         .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(glass)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(cardBackground)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color.white.opacity(colorScheme == .dark ? 0.12 : 0.35), lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(subtleStroke, lineWidth: 0.5)
         )
     }
 
-    var modelBreakdownCard: some View {
+    var modelCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Today by Model")
-                .font(.caption2.weight(.medium))
-                .foregroundStyle(textSecondary)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(secondaryText)
                 .textCase(.uppercase)
+                .tracking(0.5)
+
             if store.modelShares.isEmpty {
                 Text("No model data")
-                    .font(.caption)
-                    .foregroundStyle(textSecondary)
-                    .frame(height: 90)
+                    .font(.system(size: 12))
+                    .foregroundStyle(secondaryText)
+                    .frame(maxWidth: .infinity, minHeight: 80)
             } else {
-                Chart(store.modelShares) { share in
-                    SectorMark(
-                        angle: .value("Cost", share.cost),
-                        innerRadius: .ratio(0.58),
-                        angularInset: 1.0
-                    )
-                    .foregroundStyle(share.color.opacity(0.85))
-                    .cornerRadius(3)
-                }
-                .frame(height: 90)
-                .chartBackground { _ in
-                    Circle()
-                        .fill(Color.white.opacity(colorScheme == .dark ? 0.05 : 0.15))
-                }
-                .overlay(
-                    VStack(spacing: 0) {
-                        Text("Top")
-                            .font(.system(size: 8, weight: .medium))
-                            .foregroundStyle(textSecondary)
-                        Text(store.modelShares.first?.model.prefix(8) ?? "-")
-                            .font(.system(size: 9, weight: .semibold))
-                            .foregroundStyle(textPrimary)
-                            .lineLimit(1)
+                HStack(spacing: 14) {
+                    Chart(store.modelShares) { share in
+                        SectorMark(
+                            angle: .value("Cost", share.cost),
+                            innerRadius: .ratio(0.6),
+                            angularInset: 1.0
+                        )
+                        .foregroundStyle(grayColor(for: share.model).opacity(0.9))
+                        .cornerRadius(2)
                     }
-                )
+                    .frame(width: 70, height: 70)
 
-                HStack(spacing: 8) {
-                    ForEach(store.modelShares.prefix(3)) { share in
-                        HStack(spacing: 4) {
-                            Circle()
-                                .fill(share.color)
-                                .frame(width: 5, height: 5)
-                            Text(share.model)
-                                .font(.system(size: 9))
-                                .foregroundStyle(textSecondary)
-                                .lineLimit(1)
+                    VStack(alignment: .leading, spacing: 5) {
+                        ForEach(store.modelShares) { share in
+                            HStack(spacing: 6) {
+                                Circle()
+                                    .fill(grayColor(for: share.model))
+                                    .frame(width: 6, height: 6)
+                                Text(share.model)
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(primaryText)
+                                    .lineLimit(1)
+                                Spacer(minLength: 4)
+                                Text(share.cost, format: .currency(code: "USD").precision(.fractionLength(2)))
+                                    .font(.system(size: 10, weight: .medium))
+                                    .foregroundStyle(secondaryText)
+                                    .monospacedDigit()
+                            }
                         }
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .padding(.top, 4)
             }
         }
         .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(glass)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(cardBackground)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color.white.opacity(colorScheme == .dark ? 0.12 : 0.35), lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(subtleStroke, lineWidth: 0.5)
         )
     }
 
     var bottomGrid: some View {
         HStack(spacing: 10) {
-            smallCard(title: "This Month", value: store.monthCost, subtitle: "\(store.monthInput) in / \(store.monthOutput) out")
+            smallCard(title: "This Month", value: store.monthCost, subtitle: "\(store.monthInput) / \(store.monthOutput)")
             smallCard(title: "Session", value: store.sessionCost, subtitle: store.sessionLabel)
         }
     }
@@ -236,54 +235,75 @@ struct ContentView: View {
             }
             .keyboardShortcut("r")
             .buttonStyle(.borderedProminent)
-            .tint(.indigo)
+            .tint(.primary)
 
             Button("Quit") {
                 NSApplication.shared.terminate(nil)
             }
             .buttonStyle(.bordered)
-            .tint(.gray)
+            .tint(.secondary)
         }
     }
 
-    func tokenStat(value: String, label: String) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text(value)
-                .font(.system(size: 11, weight: .semibold, design: .rounded))
-                .foregroundStyle(textPrimary)
-                .monospacedDigit()
-            Text(label)
-                .font(.system(size: 9))
-                .foregroundStyle(textSecondary)
+    func tokenStat(icon: String, value: String, label: String) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(secondaryText)
+            VStack(alignment: .leading, spacing: 0) {
+                Text(value)
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .foregroundStyle(primaryText)
+                    .monospacedDigit()
+                Text(label)
+                    .font(.system(size: 8))
+                    .foregroundStyle(secondaryText)
+            }
         }
     }
 
     func smallCard(title: String, value: Double, subtitle: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
-                .font(.caption2.weight(.medium))
-                .foregroundStyle(textSecondary)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(secondaryText)
                 .textCase(.uppercase)
+                .tracking(0.5)
             Text(value, format: .currency(code: "USD").precision(.fractionLength(2)))
-                .font(.system(size: 16, weight: .bold, design: .rounded))
-                .foregroundStyle(textPrimary)
+                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .foregroundStyle(primaryText)
                 .monospacedDigit()
             Text(subtitle)
                 .font(.system(size: 9))
-                .foregroundStyle(textSecondary)
-                .lineLimit(2)
+                .foregroundStyle(secondaryText)
+                .lineLimit(1)
                 .truncationMode(.tail)
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(glass)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(cardBackground)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color.white.opacity(colorScheme == .dark ? 0.12 : 0.35), lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(subtleStroke, lineWidth: 0.5)
         )
+    }
+
+    func grayColor(for model: String) -> Color {
+        let grays: [Color] = [
+            .white,
+            .white.opacity(0.75),
+            .white.opacity(0.55),
+            .white.opacity(0.40),
+            .white.opacity(0.25)
+        ]
+        var hash = 5381
+        for c in model.unicodeScalars {
+            hash = ((hash &* 33) &+ Int(c.value)) & 0x7fffffff
+        }
+        return grays[hash % grays.count]
     }
 
     func timeAgo(_ date: Date) -> String {

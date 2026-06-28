@@ -9,7 +9,7 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 0) {
             header
                 .padding(.horizontal, 20)
-                .padding(.top, 12)
+                .padding(.top, 0)
                 .padding(.bottom, 8)
 
             Divider()

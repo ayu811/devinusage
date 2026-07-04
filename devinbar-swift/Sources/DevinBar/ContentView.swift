@@ -27,11 +27,13 @@ struct ContentView: View {
                 .padding(.top, 10)
                 .padding(.bottom, 8)
 
-            content
-                .padding(.horizontal, 24)
-                .padding(.top, 6)
-                .padding(.bottom, 14)
-                .frame(maxHeight: .infinity, alignment: .top)
+            ScrollView(showsIndicators: false) {
+                content
+                    .padding(.horizontal, 24)
+                    .padding(.top, 6)
+                    .padding(.bottom, 14)
+            }
+            .frame(maxHeight: .infinity)
 
             Spacer(minLength: 0)
 
@@ -43,7 +45,7 @@ struct ContentView: View {
                 .padding(.horizontal, 24)
                 .padding(.vertical, 12)
         }
-        .frame(width: 300, height: 480)
+        .frame(width: 300, height: 540)
         .background(.ultraThinMaterial)
         .animation(.none, value: selectedTab)
     }
@@ -88,6 +90,8 @@ struct ContentView: View {
                 AdaptiveView(store: store)
             }
         }
+        .id(selectedTab)
+        .transaction { $0.animation = nil }
     }
 
     var todayContent: some View {

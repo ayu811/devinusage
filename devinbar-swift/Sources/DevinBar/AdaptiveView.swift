@@ -6,11 +6,23 @@ struct AdaptiveView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
+            adaptiveHeader
+            Divider()
             savingsSection
             Divider()
             routingSection
+            Spacer(minLength: 0)
+        }
+    }
+
+    var adaptiveHeader: some View {
+        HStack(alignment: .center, spacing: 8) {
+            Text("Adaptive")
+                .font(.system(size: 15, weight: .semibold))
+
             Spacer()
         }
+        .frame(height: 22)
     }
 
     var savingsSection: some View {
@@ -79,9 +91,10 @@ struct AdaptiveView: View {
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, minHeight: 60)
             } else {
-                VStack(alignment: .center, spacing: 10) {
+                VStack(alignment: .leading, spacing: 10) {
                     donutChart
-                        .frame(height: 120)
+                        .frame(height: 100)
+                        .frame(maxWidth: .infinity)
 
                     VStack(alignment: .leading, spacing: 6) {
                         ForEach(store.adaptiveRows, id: \.model) { row in

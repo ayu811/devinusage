@@ -142,6 +142,75 @@ func BreakdownByModel(records []UsageRecord, prices map[string]ModelPrice, keyFn
 	return result
 }
 
+// AdaptiveModelRow aggregates usage and costs for one model selected by the
+// adaptive router. MarketCost is what the same tokens would cost at the model's
+// public API rate; AdaptiveCost is what they cost at the fixed adaptive rate.
+type AdaptiveModelRow struct {
+	Model        string
+	Input        int64
+	Output       int64
+	CacheRead    int64
+	CacheCreate  int64
+	MarketCost   float64
+	AdaptiveCost float64
+	Saved        float64
+	SavedPercent float64 // -1 means the model has no known public pricing
+}
+
+// AggregateAdaptiveByModel filters records to sessions that started with model
+// "adaptive" and aggregates usage per routed model. It returns the per-model rows
+// plus total market cost, total adaptive cost, and total savings.
+func AggregateAdaptiveByModel(records []UsageRecord, prices map[string]ModelPrice) ([]AdaptiveModelRow, float64, float64, float64, error) {
+	adaptiveRate, ok := prices[normalizeModelName("adaptive")]
+	if !ok {
+		return nil, 0, 0, 0, fmt.Errorf("adaptive rate not found in pricing table; run `devinusage pricing init` and add an \"adaptive\" entry")
+	}
+
+	groups := make(map[string]*AdaptiveModelRow)
+	for _, r := range records {
+		if normalizeModelName(r.SessionModel) != "adaptive" {
+			continue
+		}
+		row, ok := groups[r.Model]
+		if !ok {
+			row = &AdaptiveModelRow{Model: r.Model}
+			groups[r.Model] = row
+		}
+		row.Input += r.InputTokens
+		row.Output += r.OutputTokens
+		row.CacheRead += r.CacheReadTokens
+		row.CacheCreate += r.CacheCreationTokens
+		row.MarketCost += EstimateCost(prices, r.Model, r.InputTokens, r.OutputTokens, r.CacheReadTokens, r.CacheCreationTokens)
+		row.AdaptiveCost += EstimateCostWithPrice(adaptiveRate, r.InputTokens, r.OutputTokens, r.CacheReadTokens, r.CacheCreationTokens)
+	}
+
+	result := make([]AdaptiveModelRow, 0, len(groups))
+	var totalMarket, totalAdaptive, totalSaved float64
+	for _, row := range groups {
+		row.Saved = row.MarketCost - row.AdaptiveCost
+		if row.MarketCost > 0 {
+			row.SavedPercent = row.Saved / row.MarketCost
+		} else {
+			row.SavedPercent = -1
+		}
+		result = append(result, *row)
+		if row.MarketCost > 0 {
+			totalMarket += row.MarketCost
+			totalAdaptive += row.AdaptiveCost
+			totalSaved += row.Saved
+		}
+	}
+
+	sort.Slice(result, func(i, j int) bool {
+		if result[i].MarketCost != result[j].MarketCost {
+			return result[i].MarketCost > result[j].MarketCost
+		}
+		return result[i].Model < result[j].Model
+	})
+
+	return result, totalMarket, totalAdaptive, totalSaved, nil
+}
+
 func RenderTable(w io.Writer, title string, aggregates []*Aggregate, showCache bool, showBreakdown bool, records []UsageRecord, prices map[string]ModelPrice, mode string, forcedWidth int) {
 	fmt.Fprintf(w, "\n%s\n\n", title)
 
@@ -532,4 +601,200 @@ func ParseDate(s string) (time.Time, error) {
 		return time.Time{}, nil
 	}
 	return time.Parse("20060102", s)
+}
+
+// RenderAdaptiveTable prints an adaptive routing report showing which models the
+// adaptive router selected and how much was saved versus paying public API rates.
+func RenderAdaptiveTable(w io.Writer, records []UsageRecord, prices map[string]ModelPrice, showCache bool, forcedWidth int) {
+	rows, totalMarket, totalAdaptive, totalSaved, err := AggregateAdaptiveByModel(records, prices)
+	if err != nil {
+		fmt.Fprintf(w, "error: %v\n", err)
+		return
+	}
+
+	fmt.Fprintln(w, "\nDevin CLI Adaptive Routing Report\n")
+	if len(rows) == 0 {
+		fmt.Fprintln(w, "No adaptive usage records found.")
+		return
+	}
+
+	width := EffectiveWidth(forcedWidth, 0)
+
+	var cells [][]string
+	var hasUnknown bool
+	for _, r := range rows {
+		row := []string{
+			r.Model,
+			FormatTokens(r.Input),
+			FormatTokens(r.Output),
+			fmt.Sprintf("$%.4f", r.MarketCost),
+			fmt.Sprintf("$%.4f", r.AdaptiveCost),
+			fmt.Sprintf("$%.4f", r.Saved),
+		}
+		if showCache {
+			row = append(row, FormatTokens(r.CacheRead), FormatTokens(r.CacheCreate))
+		}
+		if r.SavedPercent >= 0 {
+			row = append(row, fmt.Sprintf("%.1f%%", r.SavedPercent*100))
+		} else {
+			row = append(row, "n/a")
+			hasUnknown = true
+		}
+		cells = append(cells, row)
+	}
+
+	footer := []string{
+		"TOTAL",
+		"",
+		"",
+		fmt.Sprintf("$%.4f", totalMarket),
+		fmt.Sprintf("$%.4f", totalAdaptive),
+		fmt.Sprintf("$%.4f", totalSaved),
+	}
+	if showCache {
+		footer = append(footer, "", "")
+	}
+	if totalMarket > 0 {
+		footer = append(footer, fmt.Sprintf("%.1f%%", totalSaved/totalMarket*100))
+	} else {
+		footer = append(footer, "n/a")
+	}
+
+	modelMaxWidth := 30
+	if showCache {
+		modelMaxWidth = 20
+	}
+	columns := []tableColumn{
+		{header: "model", alignRight: false, flex: true, minWidth: 12, maxWidth: modelMaxWidth},
+		{header: "input", alignRight: true, flex: false, minWidth: 10, maxWidth: 12},
+		{header: "output", alignRight: true, flex: false, minWidth: 10, maxWidth: 12},
+		{header: "market cost", alignRight: true, flex: false, minWidth: 13, maxWidth: 14},
+		{header: "adaptive cost", alignRight: true, flex: false, minWidth: 13, maxWidth: 15},
+		{header: "saved", alignRight: true, flex: false, minWidth: 13, maxWidth: 14},
+	}
+	if showCache {
+		columns = append(columns,
+			tableColumn{header: "cache_read", alignRight: true, flex: false, minWidth: 11, maxWidth: 12},
+			tableColumn{header: "cache_cre", alignRight: true, flex: false, minWidth: 10, maxWidth: 12},
+		)
+	}
+	columns = append(columns, tableColumn{header: "saved_pct", alignRight: true, flex: false, minWidth: 10, maxWidth: 12})
+
+	renderBoxTable(w, columns, cells, footer, width, 0)
+
+	fmt.Fprintln(w)
+	fmt.Fprintf(w, "Adaptive rate: input $%.2f/M, output $%.2f/M, cache_read $%.2f/M, cache_creation $%.2f/M\n",
+		prices[normalizeModelName("adaptive")].Input,
+		prices[normalizeModelName("adaptive")].Output,
+		prices[normalizeModelName("adaptive")].CacheRead,
+		prices[normalizeModelName("adaptive")].CacheCreation,
+	)
+	if hasUnknown {
+		fmt.Fprintln(w, "Models marked 'n/a' have no known public pricing and are excluded from the total savings calculation.")
+	}
+	fmt.Fprintln(w, "Use --width, --blocks, or --json for full model names and cache details.")
+}
+
+// RenderAdaptiveBlocks prints each routed model as a separate block, which avoids
+// table-width issues on narrow terminals.
+func RenderAdaptiveBlocks(w io.Writer, records []UsageRecord, prices map[string]ModelPrice) {
+	rows, totalMarket, totalAdaptive, totalSaved, err := AggregateAdaptiveByModel(records, prices)
+	if err != nil {
+		fmt.Fprintf(w, "error: %v\n", err)
+		return
+	}
+
+	fmt.Fprintln(w, "\nDevin CLI Adaptive Routing Report\n")
+	if len(rows) == 0 {
+		fmt.Fprintln(w, "No adaptive usage records found.")
+		return
+	}
+
+	var hasUnknown bool
+	for _, r := range rows {
+		fmt.Fprintf(w, "%s\n", r.Model)
+		fmt.Fprintf(w, "  input: %s, output: %s", FormatTokens(r.Input), FormatTokens(r.Output))
+		if r.CacheRead > 0 || r.CacheCreate > 0 {
+			fmt.Fprintf(w, ", cache_read: %s, cache_cre: %s", FormatTokens(r.CacheRead), FormatTokens(r.CacheCreate))
+		}
+		fmt.Fprintln(w)
+		if r.SavedPercent >= 0 {
+			fmt.Fprintf(w, "  market cost: $%.4f, adaptive cost: $%.4f, saved: $%.4f (%.1f%%)\n",
+				r.MarketCost, r.AdaptiveCost, r.Saved, r.SavedPercent*100)
+		} else {
+			fmt.Fprintf(w, "  market cost: n/a, adaptive cost: $%.4f, saved: n/a\n", r.AdaptiveCost)
+			hasUnknown = true
+		}
+		fmt.Fprintln(w)
+	}
+
+	fmt.Fprintf(w, "TOTAL: market cost $%.4f, adaptive cost $%.4f, saved $%.4f", totalMarket, totalAdaptive, totalSaved)
+	if totalMarket > 0 {
+		fmt.Fprintf(w, " (%.1f%%)", totalSaved/totalMarket*100)
+	}
+	fmt.Fprintln(w)
+	fmt.Fprintf(w, "\nAdaptive rate: input $%.2f/M, output $%.2f/M, cache_read $%.2f/M, cache_creation $%.2f/M\n",
+		prices[normalizeModelName("adaptive")].Input,
+		prices[normalizeModelName("adaptive")].Output,
+		prices[normalizeModelName("adaptive")].CacheRead,
+		prices[normalizeModelName("adaptive")].CacheCreation,
+	)
+	if hasUnknown {
+		fmt.Fprintln(w, "Models marked 'n/a' have no known public pricing and are excluded from the total savings calculation.")
+	}
+}
+
+// RenderAdaptiveJSON outputs the adaptive routing report as JSON.
+func RenderAdaptiveJSON(w io.Writer, records []UsageRecord, prices map[string]ModelPrice) error {
+	rows, totalMarket, totalAdaptive, totalSaved, err := AggregateAdaptiveByModel(records, prices)
+	if err != nil {
+		return err
+	}
+
+	type jsonRow struct {
+		Model        string  `json:"model"`
+		Input        int64   `json:"input_tokens"`
+		Output       int64   `json:"output_tokens"`
+		CacheRead    int64   `json:"cache_read_tokens"`
+		CacheCreate  int64   `json:"cache_creation_tokens"`
+		MarketCost   float64 `json:"market_cost_usd"`
+		AdaptiveCost float64 `json:"adaptive_cost_usd"`
+		Saved        float64 `json:"saved_usd"`
+		SavedPercent float64 `json:"saved_percent"`
+	}
+
+	outRows := make([]jsonRow, 0, len(rows))
+	for _, r := range rows {
+		outRows = append(outRows, jsonRow{
+			Model:        r.Model,
+			Input:        r.Input,
+			Output:       r.Output,
+			CacheRead:    r.CacheRead,
+			CacheCreate:  r.CacheCreate,
+			MarketCost:   r.MarketCost,
+			AdaptiveCost: r.AdaptiveCost,
+			Saved:        r.Saved,
+			SavedPercent: r.SavedPercent,
+		})
+	}
+
+	out := struct {
+		Rows         []jsonRow `json:"rows"`
+		TotalMarket  float64   `json:"total_market_cost_usd"`
+		TotalAdaptive float64  `json:"total_adaptive_cost_usd"`
+		TotalSaved   float64   `json:"total_saved_usd"`
+		TotalSavedPercent float64 `json:"total_saved_percent"`
+	}{
+		Rows:         outRows,
+		TotalMarket:  totalMarket,
+		TotalAdaptive: totalAdaptive,
+		TotalSaved:   totalSaved,
+	}
+	if totalMarket > 0 {
+		out.TotalSavedPercent = totalSaved / totalMarket
+	}
+
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	return enc.Encode(out)
 }

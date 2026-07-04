@@ -4,39 +4,103 @@ import Charts
 struct ContentView: View {
     @ObservedObject var store: UsageStore
     @Environment(\.colorScheme) private var colorScheme
+    @State private var selectedTab: Tab = .today
+
+    enum Tab: Hashable {
+        case today
+        case adaptive
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
-                .padding(.horizontal, 20)
-                .padding(.top, 0)
+                .padding(.horizontal, 24)
+                .padding(.top, 8)
                 .padding(.bottom, 8)
 
             Divider()
-                .padding(.horizontal, 20)
+                .padding(.horizontal, 24)
+                .opacity(0.35)
 
-            VStack(alignment: .leading, spacing: 14) {
-                todaySection
-                chartSection
-                modelSection
-                bottomGrid
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
+            tabPicker
+                .padding(.horizontal, 24)
+                .padding(.top, 10)
+                .padding(.bottom, 8)
+
+            content
+                .padding(.horizontal, 24)
+                .padding(.top, 6)
+                .padding(.bottom, 14)
+                .frame(maxHeight: .infinity, alignment: .top)
+
+            Spacer(minLength: 0)
 
             Divider()
-                .padding(.horizontal, 20)
+                .padding(.horizontal, 24)
+                .opacity(0.35)
 
             footer
-                .padding(.horizontal, 20)
-                .padding(.vertical, 10)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 12)
         }
-        .frame(width: 280, height: 470)
-        .background(Color(nsColor: .windowBackgroundColor))
+        .frame(width: 300, height: 480)
+        .background(.ultraThinMaterial)
+        .animation(.none, value: selectedTab)
+    }
+
+    var tabPicker: some View {
+        HStack(spacing: 4) {
+            tabButton(.today, label: "Today")
+            tabButton(.adaptive, label: "Adaptive")
+        }
+        .padding(2)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(.secondary.opacity(0.12))
+        )
+        .frame(maxWidth: .infinity, alignment: .center)
+    }
+
+    func tabButton(_ tab: Tab, label: String) -> some View {
+        Button(action: { selectedTab = tab }) {
+            Text(label)
+                .font(.system(size: 11, weight: selectedTab == tab ? .medium : .regular))
+                .foregroundStyle(selectedTab == tab ? .primary : .secondary)
+                .padding(.vertical, 4)
+                .padding(.horizontal, 12)
+                .frame(minWidth: 64)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .background(
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(selectedTab == tab ? Color(nsColor: .controlBackgroundColor).opacity(0.85) : Color.clear)
+                .shadow(color: .black.opacity(selectedTab == tab ? 0.04 : 0), radius: 1, x: 0, y: 1)
+        )
+    }
+
+    var content: some View {
+        Group {
+            switch selectedTab {
+            case .today:
+                todayContent
+            case .adaptive:
+                AdaptiveView(store: store)
+            }
+        }
+    }
+
+    var todayContent: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            todaySection
+            chartSection
+            modelSection
+            bottomGrid
+        }
     }
 
     var header: some View {
-        HStack(spacing: 8) {
+        HStack(alignment: .top, spacing: 8) {
             Image(nsImage: devinAppIcon(size: 22))
                 .resizable()
                 .aspectRatio(contentMode: .fit)
@@ -93,7 +157,7 @@ struct ContentView: View {
                         x: .value("Date", point.date, unit: .day),
                         y: .value("Cost", point.cost)
                     )
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(.primary.opacity(0.75))
                     .cornerRadius(3)
                 }
                 .frame(height: 80)
@@ -102,17 +166,19 @@ struct ContentView: View {
                     AxisMarks(values: .stride(by: .day)) { value in
                         AxisValueLabel(format: .dateTime.day())
                             .font(.system(size: 9))
+                            .foregroundStyle(.primary)
                     }
                 }
                 .chartBackground { _ in
                     RoundedRectangle(cornerRadius: 6)
-                        .fill(.background)
+                        .fill(.clear)
                 }
                 .chartPlotStyle { plotArea in
                     plotArea
                         .background(
                             RoundedRectangle(cornerRadius: 6)
-                                .fill(colorScheme == .dark ? Color.white.opacity(0.06) : Color.black.opacity(0.04))
+                                .stroke(.secondary.opacity(colorScheme == .dark ? 0.18 : 0.12), lineWidth: 0.5)
+                                .fill(.secondary.opacity(colorScheme == .dark ? 0.12 : 0.08))
                         )
                 }
             }

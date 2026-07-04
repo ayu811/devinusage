@@ -59,6 +59,50 @@ struct ModelShare: Identifiable {
     let color: Color
 }
 
+struct AdaptiveRow: Codable {
+    let model: String
+    let inputTokens: Int64
+    let outputTokens: Int64
+    let cacheReadTokens: Int64
+    let cacheCreationTokens: Int64
+    let marketCostUsd: Double
+    let adaptiveCostUsd: Double
+    let savedUsd: Double
+    let savedPercent: Double
+
+    enum CodingKeys: String, CodingKey {
+        case model
+        case inputTokens = "input_tokens"
+        case outputTokens = "output_tokens"
+        case cacheReadTokens = "cache_read_tokens"
+        case cacheCreationTokens = "cache_creation_tokens"
+        case marketCostUsd = "market_cost_usd"
+        case adaptiveCostUsd = "adaptive_cost_usd"
+        case savedUsd = "saved_usd"
+        case savedPercent = "saved_percent"
+    }
+}
+
+extension AdaptiveRow: Identifiable {
+    var id: String { model }
+}
+
+struct AdaptiveReport: Codable {
+    let rows: [AdaptiveRow]
+    let totalMarketCostUsd: Double
+    let totalAdaptiveCostUsd: Double
+    let totalSavedUsd: Double
+    let totalSavedPercent: Double
+
+    enum CodingKeys: String, CodingKey {
+        case rows
+        case totalMarketCostUsd = "total_market_cost_usd"
+        case totalAdaptiveCostUsd = "total_adaptive_cost_usd"
+        case totalSavedUsd = "total_saved_usd"
+        case totalSavedPercent = "total_saved_percent"
+    }
+}
+
 class UsageStore: ObservableObject {
     @Published var todayCost: Double = 0
     @Published var todayInput: String = "0"
@@ -80,6 +124,12 @@ class UsageStore: ObservableObject {
     @Published var modelShares: [ModelShare] = []
     @Published var lastUpdated: Date = Date.distantPast
 
+    @Published var adaptiveMarketCost: Double = 0
+    @Published var adaptiveCost: Double = 0
+    @Published var adaptiveSaved: Double = 0
+    @Published var adaptiveSavedPercent: Double = 0
+    @Published var adaptiveRows: [AdaptiveRow] = []
+
     private var timer: Timer?
 
     init() {
@@ -95,6 +145,7 @@ class UsageStore: ObservableObject {
             self.updateMonth()
             self.updateSession()
             self.updateHistory()
+            self.updateAdaptive()
             DispatchQueue.main.async {
                 self.lastUpdated = Date()
             }
@@ -168,6 +219,23 @@ class UsageStore: ObservableObject {
         }
     }
 
+    private func updateAdaptive() {
+        let calendar = Calendar.current
+        guard let start = calendar.date(byAdding: .day, value: -30, to: Date()) else { return }
+        let since = dateString(start)
+        let until = dateString(Date())
+        guard let data = runDevinUsage(args: ["adaptive", "--json", "--since", since, "--until", until]),
+              let report = parseAdaptiveReport(data) else { return }
+        DispatchQueue.main.async {
+            self.adaptiveMarketCost = report.totalMarketCostUsd
+            self.adaptiveCost = report.totalAdaptiveCostUsd
+            self.adaptiveSaved = report.totalSavedUsd
+            self.adaptiveSavedPercent = report.totalSavedPercent
+            self.adaptiveRows = report.rows
+                .sorted { $0.adaptiveCostUsd > $1.adaptiveCostUsd }
+        }
+    }
+
     private func buildModelShares(from breakdown: [UsageBreakdown]) -> [ModelShare] {
         let total = breakdown.reduce(0.0) { $0 + $1.costUsd }
         guard total > 0 else { return [] }
@@ -183,7 +251,7 @@ private func formatTokens(_ n: Int64) -> String {
     return String(format: "%.2fM", Double(n) / 1_000_000)
 }
 
-private func colorForModel(_ model: String) -> Color {
+func colorForModel(_ model: String) -> Color {
     let colors: [Color] = [.indigo, .purple, .blue, .cyan, .teal, .green, .orange, .pink, .red]
     var hash = 5381
     for c in model.unicodeScalars {
@@ -208,6 +276,11 @@ private func monthStartString(_ date: Date) -> String {
 private func parseAggregates(_ data: Data) -> [UsageAggregate]? {
     let decoder = JSONDecoder()
     return try? decoder.decode([UsageAggregate].self, from: data)
+}
+
+private func parseAdaptiveReport(_ data: Data) -> AdaptiveReport? {
+    let decoder = JSONDecoder()
+    return try? decoder.decode(AdaptiveReport.self, from: data)
 }
 
 private func runDevinUsage(args: [String]) -> Data? {

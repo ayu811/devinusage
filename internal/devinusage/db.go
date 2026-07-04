@@ -15,6 +15,7 @@ import (
 type UsageRecord struct {
 	SessionID           string
 	SessionTitle        string
+	SessionModel        string
 	Timestamp           time.Time
 	Model               string
 	InputTokens         int64
@@ -61,6 +62,7 @@ func ReadUsageRecords(dbPath string, since, until time.Time) ([]UsageRecord, err
 		SELECT
 			m.session_id AS session_id,
 			s.title AS title,
+			s.model AS session_model,
 			m.created_at AS created_at,
 			json_extract(m.chat_message, '$.metadata.generation_model') AS model,
 			json_extract(m.chat_message, '$.metadata.metrics') AS metrics_json
@@ -92,6 +94,7 @@ func ReadUsageRecords(dbPath string, since, until time.Time) ([]UsageRecord, err
 	var rows []struct {
 		SessionID    string `json:"session_id"`
 		Title        string `json:"title"`
+		SessionModel string `json:"session_model"`
 		CreatedAt    int64  `json:"created_at"`
 		Model        string `json:"model"`
 		MetricsJSON  string `json:"metrics_json"`
@@ -105,6 +108,7 @@ func ReadUsageRecords(dbPath string, since, until time.Time) ([]UsageRecord, err
 		rec := UsageRecord{
 			SessionID:    row.SessionID,
 			SessionTitle: row.Title,
+			SessionModel: row.SessionModel,
 			Timestamp:    time.Unix(row.CreatedAt, 0).UTC(),
 			Model:        row.Model,
 		}

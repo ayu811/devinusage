@@ -21,34 +21,49 @@ type ModelPrice struct {
 // public API pricing for the underlying model providers. Devin CLI may apply
 // different rates, credits, or internal routing. Use `devinusage pricing init` to
 // generate a JSON file you can edit, then pass it with `--pricing`.
+//
+// Verified against public pricing pages as of 2026-07-04:
+//   - Anthropic Claude: https://platform.claude.com/docs/en/about-claude/pricing
+//   - Moonshot Kimi: https://api.moonshot.ai, https://developer.puter.com/tutorials/kimi-api-pricing
+//   - Zhipu GLM / Z.ai: https://docs.z.ai, https://tokencost.app/models/glm-5-2
+//   - OpenAI GPT / o-series: https://developers.openai.com/api/docs/models
+//   - Devin adaptive: https://docs.devin.ai/cli/adaptive
 var defaultPricing = map[string]ModelPrice{
-	// Anthropic Claude (source: platform.claude.com/docs, 2026-06)
-	// Opus 4.7/4.6: $5/$25; cache read 10% of input; cache write 1.25x input.
+	// Anthropic Claude (source: platform.claude.com/docs, 2026-07)
+	// Opus 4.7/4.6: $5/$25; cache read 10% of input; 5m cache write 1.25x input.
 	"claude-opus-4-7":        {Input: 5.00, Output: 25.00, CacheRead: 0.50, CacheCreation: 6.25},
 	"claude-opus-4-7-low":    {Input: 5.00, Output: 25.00, CacheRead: 0.50, CacheCreation: 6.25},
 	"claude-opus-4-7-medium": {Input: 5.00, Output: 25.00, CacheRead: 0.50, CacheCreation: 6.25},
 	"claude-sonnet-4-6":      {Input: 3.00, Output: 15.00, CacheRead: 0.30, CacheCreation: 3.75},
 
-	// Moonshot Kimi (source: platform.kimi.ai, 2026-06)
+	// Moonshot Kimi (source: platform.kimi.ai, 2026-07)
 	"kimi-k2-5": {Input: 0.60, Output: 3.00, CacheRead: 0.10, CacheCreation: 0.60},
 	"kimi-k2-6": {Input: 0.95, Output: 4.00, CacheRead: 0.16, CacheCreation: 0.95},
 	"kimi-k2-7": {Input: 0.95, Output: 4.00, CacheRead: 0.19, CacheCreation: 0.95},
 
-	// Zhipu GLM / Z.ai (source: docs.z.ai, 2026-06)
+	// Zhipu GLM / Z.ai (source: docs.z.ai, tokencost.app, 2026-07)
 	"glm-5-2": {Input: 1.40, Output: 4.40, CacheRead: 0.26, CacheCreation: 1.40},
 
-	// Google Gemini (source: ai.google.dev, 2026-06)
+	// Google Gemini (source: ai.google.dev, 2026-07)
 	// MODEL_GOOGLE_GEMINI_3_0_FLASH_LOW is treated as the low/flash-lite tier.
 	"model_google_gemini_3_0_flash_low": {Input: 0.25, Output: 1.50, CacheRead: 0.03, CacheCreation: 0.25},
 
-	// OpenAI GPT / o-series (source: developers.openai.com, 2026-06)
-	"gpt-4o":      {Input: 2.50, Output: 10.00, CacheRead: 1.25, CacheCreation: 2.50},
-	"gpt-4o-mini": {Input: 0.15, Output: 0.60, CacheRead: 0.075, CacheCreation: 0.15},
-	"o3":          {Input: 2.00, Output: 8.00, CacheRead: 0.50, CacheCreation: 2.00},
-	"o4-mini":     {Input: 1.10, Output: 4.40, CacheRead: 0.275, CacheCreation: 1.10},
+	// OpenAI GPT / o-series (source: developers.openai.com, 2026-07)
+	"gpt-4o":           {Input: 2.50, Output: 10.00, CacheRead: 1.25, CacheCreation: 2.50},
+	"gpt-4o-mini":      {Input: 0.15, Output: 0.60, CacheRead: 0.075, CacheCreation: 0.15},
+	"gpt-5.2":          {Input: 1.75, Output: 14.00, CacheRead: 0.175, CacheCreation: 1.75},
+	"model_gpt_5_2_low": {Input: 1.75, Output: 14.00, CacheRead: 0.175, CacheCreation: 1.75},
+	"o3":               {Input: 2.00, Output: 8.00, CacheRead: 0.50, CacheCreation: 2.00},
+	"o4-mini":          {Input: 1.10, Output: 4.40, CacheRead: 0.275, CacheCreation: 1.10},
 
-	// Devin CLI / Cognition internal models (source: docs.devin.ai/adaptive, 2026-06)
-	// Adaptive self-serve rate is used as a proxy for Cognition routing and SWE models.
+	// Devin CLI / Cognition internal models (source: docs.devin.ai/cli/adaptive, 2026-07)
+	//
+	// Adaptive self-serve pricing is a fixed per-token rate that applies regardless of
+	// the underlying model. As of 2026-07-04, it is an introductory promotional rate
+	// through 2026-07-07; after that date the rate may change.
+	//
+	// Cognition routing/SWE models are not publicly priced, so the adaptive rate is used
+	// as a conservative proxy for market-rate comparisons.
 	"adaptive":           {Input: 0.50, Output: 2.00, CacheRead: 0.10, CacheCreation: 0.50},
 	"swe-1-6":            {Input: 0.50, Output: 2.00, CacheRead: 0.10, CacheCreation: 0.50},
 	"swe-1-6-fast":       {Input: 0.50, Output: 2.00, CacheRead: 0.10, CacheCreation: 0.50},
@@ -78,12 +93,15 @@ func priceForModel(prices map[string]ModelPrice, model string) ModelPrice {
 	return ModelPrice{}
 }
 
+func EstimateCostWithPrice(price ModelPrice, input, output, cacheRead, cacheCreation int64) float64 {
+	return float64(input)/1e6*price.Input +
+		float64(output)/1e6*price.Output +
+		float64(cacheRead)/1e6*price.CacheRead +
+		float64(cacheCreation)/1e6*price.CacheCreation
+}
+
 func EstimateCost(prices map[string]ModelPrice, model string, input, output, cacheRead, cacheCreation int64) float64 {
-	p := priceForModel(prices, model)
-	return float64(input)/1e6*p.Input +
-		float64(output)/1e6*p.Output +
-		float64(cacheRead)/1e6*p.CacheRead +
-		float64(cacheCreation)/1e6*p.CacheCreation
+	return EstimateCostWithPrice(priceForModel(prices, model), input, output, cacheRead, cacheCreation)
 }
 
 func IsKnownModel(prices map[string]ModelPrice, model string) bool {

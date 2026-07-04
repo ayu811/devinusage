@@ -16,6 +16,7 @@ Commands:
   daily      Daily usage report (default)
   monthly    Monthly usage report
   session    Per-session usage report
+  adaptive   Adaptive model routing report
   pricing    Manage model pricing configuration
 
 Examples:
@@ -23,6 +24,9 @@ Examples:
   devinusage daily --since 20250601 --until 20250630
   devinusage monthly --breakdown
   devinusage session --json
+  devinusage adaptive
+  devinusage adaptive --blocks
+  devinusage adaptive --json
   devinusage pricing init > pricing.json
 
 Use devinusage <command> --help for command-specific flags.
@@ -41,6 +45,8 @@ func main() {
 		runMonthly(os.Args[2:])
 	case "session":
 		runSession(os.Args[2:])
+	case "adaptive":
+		runAdaptive(os.Args[2:])
 	case "pricing":
 		runPricing(os.Args[2:])
 	case "help", "--help", "-h":
@@ -60,6 +66,8 @@ type reportFlags struct {
 	JSON        bool
 	Breakdown   bool
 	NoCache     bool
+	ShowCache   bool
+	Blocks      bool
 	Width       int
 }
 
@@ -73,6 +81,20 @@ func reportFlagSet(name string) (*flag.FlagSet, *reportFlags) {
 	fs.BoolVar(&f.JSON, "json", false, "Output JSON instead of a table")
 	fs.BoolVar(&f.Breakdown, "breakdown", false, "Show per-model breakdown")
 	fs.BoolVar(&f.NoCache, "no-cache", false, "Hide cache-read column")
+	fs.IntVar(&f.Width, "width", 0, "Force table width in characters (default: auto-detect terminal width)")
+	return fs, f
+}
+
+func adaptiveFlagSet(name string) (*flag.FlagSet, *reportFlags) {
+	fs := flag.NewFlagSet(name, flag.ExitOnError)
+	f := &reportFlags{}
+	fs.StringVar(&f.DBPath, "db", "", "Path to Devin CLI sessions.db (default: ~/.local/share/devin/cli/sessions.db)")
+	fs.StringVar(&f.PricingPath, "pricing", "", "Path to JSON pricing file (default: ./pricing.json if present, otherwise built-in estimates)")
+	fs.StringVar(&f.Since, "since", "", "Include records on or after YYYYMMDD")
+	fs.StringVar(&f.Until, "until", "", "Include records on or before YYYYMMDD")
+	fs.BoolVar(&f.JSON, "json", false, "Output JSON instead of a table")
+	fs.BoolVar(&f.ShowCache, "show-cache", false, "Show cache-read and cache-creation columns")
+	fs.BoolVar(&f.Blocks, "blocks", false, "Use block-style output instead of a table")
 	fs.IntVar(&f.Width, "width", 0, "Force table width in characters (default: auto-detect terminal width)")
 	return fs, f
 }
@@ -147,6 +169,55 @@ func runMonthly(args []string) {
 
 func runSession(args []string) {
 	runReport("session", "session", args)
+}
+
+func runAdaptive(args []string) {
+	fs, f := adaptiveFlagSet("adaptive")
+	if err := fs.Parse(args); err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+
+	since, err := devinusage.ParseDate(f.Since)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: invalid --since: %v\n", err)
+		os.Exit(1)
+	}
+	until, err := devinusage.ParseDate(f.Until)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: invalid --until: %v\n", err)
+		os.Exit(1)
+	}
+	if !until.IsZero() {
+		until = until.Add(24*time.Hour - time.Second)
+	}
+
+	records, err := devinusage.ReadUsageRecords(f.DBPath, since, until)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+
+	prices, err := devinusage.LoadPricing(f.PricingPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+
+	if f.JSON {
+		if err := devinusage.RenderAdaptiveJSON(os.Stdout, records, prices); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
+	if f.Blocks {
+		devinusage.RenderAdaptiveBlocks(os.Stdout, records, prices)
+		return
+	}
+
+	devinusage.RenderAdaptiveTable(os.Stdout, records, prices, f.ShowCache, f.Width)
 }
 
 func runPricing(args []string) {

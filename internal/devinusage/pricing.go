@@ -62,8 +62,9 @@ var defaultPricing = map[string]ModelPrice{
 	// the underlying model. As of 2026-07-04, it is an introductory promotional rate
 	// through 2026-07-07; after that date the rate may change.
 	//
-	// Cognition routing/SWE models are not publicly priced, so the adaptive rate is used
-	// as a conservative proxy for market-rate comparisons.
+	// SWE-1.7 Lightning is priced per the Devin docs models page (2026-07). SWE-1.7
+	// is proxied by the Kimi K2.7 base-model rate; other Cognition routing/SWE models
+	// use the adaptive rate as a conservative proxy for market-rate comparisons.
 	"adaptive":           {Input: 0.50, Output: 2.00, CacheRead: 0.10, CacheCreation: 0.50},
 	"swe-1-6":            {Input: 0.50, Output: 2.00, CacheRead: 0.10, CacheCreation: 0.50},
 	"swe-1-6-fast":       {Input: 0.50, Output: 2.00, CacheRead: 0.10, CacheCreation: 0.50},
@@ -73,6 +74,8 @@ var defaultPricing = map[string]ModelPrice{
 	"compactor":          {Input: 0.50, Output: 2.00, CacheRead: 0.10, CacheCreation: 0.50},
 	"summarizer":         {Input: 0.50, Output: 2.00, CacheRead: 0.10, CacheCreation: 0.50},
 	"swe-check":          {Input: 0.50, Output: 2.00, CacheRead: 0.10, CacheCreation: 0.50},
+	"swe-1-7":            {Input: 0.95, Output: 4.00, CacheRead: 0.19, CacheCreation: 0.95},
+	"swe-1-7-lightning":  {Input: 2.50, Output: 12.50, CacheRead: 1.00, CacheCreation: 0.00},
 }
 
 func normalizeModelName(model string) string {

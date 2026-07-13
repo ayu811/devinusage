@@ -139,6 +139,18 @@
     "cache_read": 0.1,
     "cache_creation": 0.5
   },
+  "swe-1-7": {
+    "input": 0.95,
+    "output": 4,
+    "cache_read": 0.19,
+    "cache_creation": 0.95
+  },
+  "swe-1-7-lightning": {
+    "input": 2.5,
+    "output": 12.5,
+    "cache_read": 1,
+    "cache_creation": 0
+  },
   "swe-check": {
     "input": 0.5,
     "output": 2,
